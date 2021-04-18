@@ -1,0 +1,83 @@
+---
+
+- name: Add a key from a file on the Ansible server.
+  apt_key:
+    data: "{{ lookup('file', 'docker.gpg') }}"
+    state: present
+
+- name: add docker deb repository
+  apt_repository:
+    repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu trusty stable"
+    state: present
+
+- name: change apt-cache policy
+  shell: apt-cache policy docker-ce
+
+- name: install docker-ce
+  apt:
+    name:
+      - docker-ce
+    install_recommends: yes
+    state: present
+    update_cache: yes
+
+- name: copy docker network config
+  copy:
+    src: daemon.json
+    dest: /etc/docker/
+
+
+- name: enable and restart docker service
+  service:
+    name: docker
+    enabled: yes
+    state: restarted
+
+- name: copy docker compose to host
+  copy:
+    src: docker-compose
+    dest: /usr/local/bin/
+    mode: '0777'
+
+- name: add comp1 user to group docker
+  user:
+    name: comp1
+    append: yes
+    groups: docker
+
+- name: copy docker-compose
+  copy:
+    src: docker-compose.yml
+    dest: /usr/local/docker/
+
+- name: copy docker credentials
+  copy:
+    src: config.json
+    dest: /root/.docker/
+    owner: root
+    group: root
+    mode: '0600'
+
+- name: change .docker permission
+  file:
+    path: /root/.docker
+    mode: '0700'
+    owner: root
+    group: root
+
+- name: make output directories for duplo docker uploader
+  file:
+    path: "/srv/tmp/{{ item }}"
+    state: directory
+    owner: comp1
+    group: docker
+  loop:
+    - in
+    - out
+    - err
+
+- name: run docker-compose to start hollowpoke
+  command: docker-compose up -d
+  args:
+    chdir: /usr/local/docker/
+

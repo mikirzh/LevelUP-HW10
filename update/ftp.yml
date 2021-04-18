@@ -1,0 +1,42 @@
+---
+- hosts: [all]
+  vars:
+    remote_dir: /srv/ftp
+  tasks:
+  - name: установим vsftpd
+    apt:
+      name: vsftpd
+      update_cache: no
+      state: present
+
+  - name: добавляем пользователя vsftpd
+    user:
+      name: ftpu01
+      group: ubuntu
+      shell: /bin/false
+      home: /srv/ftp
+      password: "qwertyuiop[]"
+      state: present
+
+  - name:  создаем каталог
+    file:
+      path: "{{ remote_dir }}"
+      state: directory
+      owner: ftpu01
+      group: ubuntu
+      mode: 0770
+      recurse: yes
+
+  - name: конфиг
+    blockinfile:
+      path: /etc/vsftpd.conf
+      create: yes
+      marker: ""
+      block: |
+        listen=YES
+        anonymous_enable=YES
+
+  - name: restart vsftpd
+    service:
+      name: vsftpd
+      state: restarted
